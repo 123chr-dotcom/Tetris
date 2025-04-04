@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>现代俄罗斯方块</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --block-size: 30px;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #game-board {
+            border: 2px solid #34495e;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 150px;
+        }
+
+        .score-box {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #next-block {
+            width: 120px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+        }
+
+        .controls {
+            margin-top: auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .block {
+            width: var(--block-size);
+            height: var(--block-size);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .I { background: #00f0f0; }
+        .O { background: #f0f000; }
+        .T { background: #a000f0; }
+        .S { background: #00f000; }
+        .Z { background: #f00000; }
+        .J { background: #0000f0; }
+        .L { background: #f0a000; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="game-board" width="300" height="600"></canvas>
+        <div class="sidebar">
+            <div class="score-box">
+                <h2>得分</h2>
+                <div id="score">0</div>
+            </div>
+            <div class="score-box">
+                <h2>最高分</h2>
+                <div id="highscore">0</div>
+            </div>
+            <div class="score-box">
+                <h2>下一个</h2>
+                <div id="next-block"></div>
+            </div>
+            <div class="controls">
+                <button onclick="game.reset()">新游戏</button>
+                <button onclick="game.togglePause()">暂停/继续</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+class TetrisGame {
+    constructor() {
+        this.canvas = document.getElementById('game-board');
+        this.ctx = this.canvas.getContext('2d');
+        this.blockSize = 30;
+        this.rows = 20;
+        this.cols = 10;
+        this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(0));
+        this.score = 0;
+        this.highScore = this.getCookie('highScore') || 0;
+        this.gameLoop = null;
+        this.speed = 800;
+        this.init();
+    }
+
+    init() {
+        document.getElementById('highscore').textContent = this.highScore;
+        this.spawnNewBlock();
+        document.addEventListener('keydown', (e) => this.handleInput(e));
+        this.start();
+    }
+
+    shapes = {
+        I: [[1,1,1,1]], 
+        O: [[1,1],[1,1]],
+        T: [[0,1,0],[1,1,1]],
+        S: [[0,1,1],[1,1,0]],
+        Z: [[1,1,0],[0,1,1]],
+        J: [[1,0,0],[1,1,1]],
+        L: [[0,0,1],[1,1,1]]
+    };
+
+    spawnNewBlock() {
+        const shapes = Object.keys(this.shapes);
+        const type = shapes[Math.floor(Math.random() * shapes.length)];
+        this.currentBlock = {
+            shape: this.shapes[type],
+            type: type,
+            x: Math.floor(this.cols/2) - 1,
+            y: 0
+        };
+        this.updateNextBlockPreview();
+    }
+
+    updateNextBlockPreview() {
+        const nextBlockDiv = document.getElementById('next-block');
+        nextBlockDiv.innerHTML = '';
+        const type = Object.keys(this.shapes)[
+            Math.floor(Math.random() * Object.keys(this.shapes).length)
+        ];
+        this.nextBlockType = type;
+        this.shapes[type].forEach(row => {
+            row.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = `block ${type}`;
+                div.style.visibility = cell ? 'visible' : 'hidden';
+                nextBlockDiv.appendChild(div);
+            });
+        });
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制当前方块
+        this.drawBlock(this.currentBlock);
+        
+        // 绘制已固定的方块
+        this.board.forEach((row, y) => {
+            row.forEach((cell, x) => {
+                if (cell) {
+                    this.ctx.fillStyle = cell;
+                    this.ctx.fillRect(x * this.blockSize, y * this.blockSize, 
+                                    this.blockSize -1, this.blockSize -1);
+                }
+            });
+        });
+    }
+
+    drawBlock(block) {
+        this.ctx.fillStyle = this.getColor(block.type);
+        block.shape.forEach((row, y) => {
+            row.forEach((cell, x) => {
+                if (cell) {
+                    this.ctx.fillRect(
+                        (block.x + x) * this.blockSize,
+                        (block.y + y) * this.blockSize,
+                        this.blockSize -1,
+                        this.blockSize -1
+                    );
+                }
+            });
+        });
+    }
+
+    getColor(type) {
+        const colors = {
+            I: '#00f0f0',
+            O: '#f0f000',
+            T: '#a000f0',
+            S: '#00f000',
+            Z: '#f00000',
+            J: '#0000f0',
+            L: '#f0a000'
+        };
+        return colors[type];
+    }
+
+    moveDown() {
+        if (this.canMove(0, 1)) {
+            this.currentBlock.y++;
+        } else {
+            this.fixBlock();
+            this.checkLines();
+            this.spawnNewBlock();
+            if (!this.canMove(0, 0)) {
+                this.gameOver();
+            }
+        }
+        this.draw();
+    }
+
+    canMove(offsetX, offsetY) {
+        return this.currentBlock.shape.every((row, dy) => {
+            return row.every((cell, dx) => {
+                if (!cell) return true;
+                const newX = this.currentBlock.x + dx + offsetX;
+                const newY = this.currentBlock.y + dy + offsetY;
+                return newX >= 0 && newX < this.cols && 
+                       newY < this.rows && 
+                       !this.board[newY]?.[newX];
+            });
+        });
+    }
+
+    fixBlock() {
+        this.currentBlock.shape.forEach((row, y) => {
+            row.forEach((cell, x) => {
+                if (cell) {
+                    this.board[this.currentBlock.y + y][this.currentBlock.x + x] = 
+                        this.getColor(this.currentBlock.type);
+                }
+            });
+        });
+    }
+
+    checkLines() {
+        let lines = 0;
+        for (let y = this.rows - 1; y >= 0; y--) {
+            if (this.board[y].every(cell => cell)) {
+                this.board.splice(y, 1);
+                this.board.unshift(Array(this.cols).fill(0));
+                lines++;
+                y++;
+            }
+        }
+        if (lines) {
+            this.score += lines * 100;
+            document.getElementById('score').textContent = this.score;
+            if (this.score > this.highScore) {
+                this.highScore = this.score;
+                document.getElementById('highscore').textContent = this.highScore;
+                this.setCookie('highScore', this.highScore, 365);
+            }
+        }
+    }
+
+    handleInput(e) {
+        switch(e.key) {
+            case 'ArrowLeft': 
+                if (this.canMove(-1, 0)) this.currentBlock.x--;
+                break;
+            case 'ArrowRight':
+                if (this.canMove(1, 0)) this.currentBlock.x++;
+                break;
+            case 'ArrowDown':
+                this.moveDown();
+                break;
+            case 'ArrowUp':
+                this.rotate();
+                break;
+        }
+        this.draw();
+    }
+
+    rotate() {
+        const rotated = this.currentBlock.shape[0].map((_, i) =>
+            this.currentBlock.shape.map(row => row[i]).reverse()
+        );
+        const previousShape = this.currentBlock.shape;
+        this.currentBlock.shape = rotated;
+        if (!this.canMove(0, 0)) {
+            this.currentBlock.shape = previousShape;
+        }
+    }
+
+    start() {
+        this.gameLoop = setInterval(() => this.moveDown(), this.speed);
+    }
+
+    togglePause() {
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        } else {
+            this.start();
+        }
+    }
+
+    reset() {
+        clearInterval(this.gameLoop);
+        this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(0));
+        this.score = 0;
+        document.getElementById('score').textContent = 0;
+        this.spawnNewBlock();
+        this.start();
+    }
+
+    gameOver() {
+        clearInterval(this.gameLoop);
+        alert(`游戏结束！得分：${this.score}`);
+        this.reset();
+    }
+
+    setCookie(name, value, days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+    }
+
+    getCookie(name) {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [key, value] = cookie.trim().split('=');
+            if (key === name) return parseInt(value);
+        }
+        return 0;
+    }
+}
+
+const game = new TetrisGame();
+</script>
+</body>
+</html>
