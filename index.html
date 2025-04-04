@@ -94,6 +94,11 @@
         .Z { background: #f00000; }
         .J { background: #0000f0; }
         .L { background: #f0a000; }
+
+        .preview-block {
+            width: calc(var(--block-size) / 2);
+            height: calc(var(--block-size) / 2);
+        }
     </style>
 </head>
 <body>
@@ -132,6 +137,19 @@ class TetrisGame {
         this.highScore = this.getCookie('highScore') || 0;
         this.gameLoop = null;
         this.speed = 800;
+        this.nextBlockType = null;
+
+        // 修复1：将shapes移动到构造函数内部
+        this.shapes = {
+            I: [[1,1,1,1]], 
+            O: [[1,1],[1,1]],
+            T: [[0,1,0],[1,1,1]],
+            S: [[0,1,1],[1,1,0]],
+            Z: [[1,1,0],[0,1,1]],
+            J: [[1,0,0],[1,1,1]],
+            L: [[0,0,1],[1,1,1]]
+        };
+
         this.init();
     }
 
@@ -142,52 +160,61 @@ class TetrisGame {
         this.start();
     }
 
-    shapes = {
-        I: [[1,1,1,1]], 
-        O: [[1,1],[1,1]],
-        T: [[0,1,0],[1,1,1]],
-        S: [[0,1,1],[1,1,0]],
-        Z: [[1,1,0],[0,1,1]],
-        J: [[1,0,0],[1,1,1]],
-        L: [[0,0,1],[1,1,1]]
-    };
-
     spawnNewBlock() {
         const shapes = Object.keys(this.shapes);
-        const type = shapes[Math.floor(Math.random() * shapes.length)];
-        this.currentBlock = {
-            shape: this.shapes[type],
-            type: type,
-            x: Math.floor(this.cols/2) - 1,
-            y: 0
-        };
+        
+        if (!this.currentBlock) {
+            const firstType = shapes[Math.floor(Math.random() * shapes.length)];
+            this.currentBlock = {
+                shape: this.shapes[firstType],
+                type: firstType,
+                x: Math.floor(this.cols/2) - 1,
+                y: 0
+            };
+            this.nextBlockType = shapes[Math.floor(Math.random() * shapes.length)];
+        } else {
+            this.currentBlock = {
+                shape: this.shapes[this.nextBlockType],
+                type: this.nextBlockType,
+                x: Math.floor(this.cols/2) - 1,
+                y: 0
+            };
+            this.nextBlockType = shapes[Math.floor(Math.random() * shapes.length)];
+        }
         this.updateNextBlockPreview();
     }
 
     updateNextBlockPreview() {
         const nextBlockDiv = document.getElementById('next-block');
         nextBlockDiv.innerHTML = '';
-        const type = Object.keys(this.shapes)[
-            Math.floor(Math.random() * Object.keys(this.shapes).length)
-        ];
-        this.nextBlockType = type;
-        this.shapes[type].forEach(row => {
-            row.forEach(cell => {
-                const div = document.createElement('div');
-                div.className = `block ${type}`;
-                div.style.visibility = cell ? 'visible' : 'hidden';
-                nextBlockDiv.appendChild(div);
-            });
-        });
+        
+        const previewGrid = document.createElement('div');
+        previewGrid.style.display = 'grid';
+        previewGrid.style.gridTemplateColumns = 'repeat(4, 15px)';
+        previewGrid.style.gap = '2px';
+        previewGrid.style.justifyContent = 'center';
+
+        const shape = this.shapes[this.nextBlockType];
+        
+        for (let y = 0; y < 4; y++) {
+            for (let x = 0; x < 4; x++) {
+                const cell = document.createElement('div');
+                cell.className = `block ${this.nextBlockType}`;
+                cell.style.width = '15px';
+                cell.style.height = '15px';
+                cell.style.visibility = (shape[y] && shape[y][x]) ? 'visible' : 'hidden';
+                previewGrid.appendChild(cell);
+            }
+        }
+        
+        nextBlockDiv.appendChild(previewGrid);
     }
 
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // 绘制当前方块
         this.drawBlock(this.currentBlock);
         
-        // 绘制已固定的方块
         this.board.forEach((row, y) => {
             row.forEach((cell, x) => {
                 if (cell) {
@@ -334,6 +361,7 @@ class TetrisGame {
         this.board = Array(this.rows).fill().map(() => Array(this.cols).fill(0));
         this.score = 0;
         document.getElementById('score').textContent = 0;
+        this.currentBlock = null;
         this.spawnNewBlock();
         this.start();
     }
@@ -360,7 +388,8 @@ class TetrisGame {
     }
 }
 
-const game = new TetrisGame();
+// 修复2：将game实例暴露到全局作用域
+window.game = new TetrisGame();
 </script>
 </body>
 </html>
