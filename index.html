@@ -10,6 +10,7 @@
             --text-color: #e6e6fa;
             --block-size: 30px;
             --accent-color: #00f3ff;
+            --rotate-color: #ff00ff;
         }
 
         body {
@@ -97,7 +98,6 @@
             transition: transform 0.1s;
         }
 
-        /* 方块霓虹色 */
         .I { background: #00f0f0; box-shadow: 0 0 10px #00f0f0; }
         .O { background: #f0f000; box-shadow: 0 0 10px #f0f000; }
         .T { background: #a000f0; box-shadow: 0 0 10px #a000f0; }
@@ -106,15 +106,23 @@
         .J { background: #0000f0; box-shadow: 0 0 10px #0000f0; }
         .L { background: #f0a000; box-shadow: 0 0 10px #f0a000; }
 
-        /* 移动控制按钮 */
         .mobile-controls {
             display: none;
             position: fixed;
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            gap: 25px;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 220px;
             z-index: 100;
+        }
+
+        .mobile-controls-top {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 15px;
         }
 
         .control-btn {
@@ -122,15 +130,23 @@
             height: 65px;
             border: none;
             border-radius: 50%;
-            background: linear-gradient(145deg, #0066ff, #00f3ff);
             color: white;
             font-size: 28px;
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        #leftBtn, #rightBtn, #downBtn {
+            background: linear-gradient(145deg, #0066ff, #00f3ff);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+        }
+
+        #rotateBtn {
+            background: linear-gradient(145deg, var(--rotate-color), #ff0066);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
         }
 
         .control-btn:active {
@@ -156,12 +172,14 @@
 
             .mobile-controls {
                 display: flex;
+                flex-direction: column;
+                align-items: center;
             }
 
             .control-btn {
                 width: 55px;
                 height: 55px;
-                font-size: 22px;
+                font-size: 24px;
             }
         }
     </style>
@@ -191,9 +209,12 @@
 
     <!-- 移动控制按钮 -->
     <div class="mobile-controls">
-        <button class="control-btn" id="leftBtn">←</button>
+        <div class="mobile-controls-top">
+            <button class="control-btn" id="leftBtn">←</button>
+            <button class="control-btn" id="rotateBtn">↻</button>
+            <button class="control-btn" id="rightBtn">→</button>
+        </div>
         <button class="control-btn" id="downBtn">↓</button>
-        <button class="control-btn" id="rightBtn">→</button>
     </div>
 
 <script>
@@ -476,17 +497,28 @@ window.game = new TetrisGame();
 const initMobileControls = () => {
     const addControl = (id, action) => {
         const btn = document.getElementById(id);
-        const handler = () => game[action]();
+        const handler = () => {
+            game[action]();
+            btn.style.transform = 'scale(0.9)';
+            setTimeout(() => btn.style.transform = '', 100);
+        };
+        
+        // 触摸事件
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             handler();
         });
-        btn.addEventListener('click', handler);
+        
+        // 点击事件
+        btn.addEventListener('mousedown', handler);
+        btn.addEventListener('mouseup', () => btn.style.transform = '');
+        btn.addEventListener('mouseleave', () => btn.style.transform = '');
     };
 
     addControl('leftBtn', 'moveLeft');
     addControl('rightBtn', 'moveRight');
     addControl('downBtn', 'moveDownFast');
+    addControl('rotateBtn', 'rotate');
 };
 
 document.addEventListener('DOMContentLoaded', initMobileControls);
