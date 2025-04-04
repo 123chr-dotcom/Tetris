@@ -2,12 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>现代俄罗斯方块</title>
+    <title>未来科技俄罗斯方块</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root {
-            --bg-color: #2c3e50;
-            --text-color: #ecf0f1;
+            --bg-color: #1a1a2e;
+            --text-color: #e6e6fa;
             --block-size: 30px;
+            --accent-color: #00f3ff;
         }
 
         body {
@@ -19,20 +21,22 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            touch-action: manipulation;
         }
 
         .game-container {
             display: flex;
             gap: 30px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(10px);
         }
 
         #game-board {
-            border: 2px solid #34495e;
-            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--accent-color);
+            background: rgba(0, 0, 0, 0.3);
         }
 
         .sidebar {
@@ -43,19 +47,22 @@
         }
 
         .score-box {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 243, 255, 0.1);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             text-align: center;
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
         }
 
         #next-block {
             width: 120px;
             height: 120px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
+            background: rgba(0, 243, 255, 0.05);
+            border-radius: 8px;
             display: grid;
             place-items: center;
+            border: 1px solid var(--accent-color);
         }
 
         .controls {
@@ -66,18 +73,20 @@
         }
 
         button {
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
-            background: #3498db;
+            border-radius: 6px;
+            background: linear-gradient(145deg, #0066ff, #00f3ff);
             color: white;
             cursor: pointer;
             transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
         button:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
+            filter: brightness(1.2);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
         }
 
         .block {
@@ -85,19 +94,75 @@
             height: var(--block-size);
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 4px;
+            transition: transform 0.1s;
         }
 
-        .I { background: #00f0f0; }
-        .O { background: #f0f000; }
-        .T { background: #a000f0; }
-        .S { background: #00f000; }
-        .Z { background: #f00000; }
-        .J { background: #0000f0; }
-        .L { background: #f0a000; }
+        /* 方块霓虹色 */
+        .I { background: #00f0f0; box-shadow: 0 0 10px #00f0f0; }
+        .O { background: #f0f000; box-shadow: 0 0 10px #f0f000; }
+        .T { background: #a000f0; box-shadow: 0 0 10px #a000f0; }
+        .S { background: #00f000; box-shadow: 0 0 10px #00f000; }
+        .Z { background: #f00000; box-shadow: 0 0 10px #f00000; }
+        .J { background: #0000f0; box-shadow: 0 0 10px #0000f0; }
+        .L { background: #f0a000; box-shadow: 0 0 10px #f0a000; }
 
-        .preview-block {
-            width: calc(var(--block-size) / 2);
-            height: calc(var(--block-size) / 2);
+        /* 移动控制按钮 */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            gap: 25px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 65px;
+            height: 65px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #0066ff, #00f3ff);
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+            filter: brightness(1.5);
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                margin-top: 40px;
+                transform: scale(0.9);
+            }
+
+            #game-board {
+                width: 80vw;
+                height: 160vw;
+            }
+
+            .sidebar {
+                width: 80vw;
+            }
+
+            .mobile-controls {
+                display: flex;
+            }
+
+            .control-btn {
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
         }
     </style>
 </head>
@@ -124,6 +189,13 @@
         </div>
     </div>
 
+    <!-- 移动控制按钮 -->
+    <div class="mobile-controls">
+        <button class="control-btn" id="leftBtn">←</button>
+        <button class="control-btn" id="downBtn">↓</button>
+        <button class="control-btn" id="rightBtn">→</button>
+    </div>
+
 <script>
 class TetrisGame {
     constructor() {
@@ -139,7 +211,6 @@ class TetrisGame {
         this.speed = 800;
         this.nextBlockType = null;
 
-        // 修复1：将shapes移动到构造函数内部
         this.shapes = {
             I: [[1,1,1,1]], 
             O: [[1,1],[1,1]],
@@ -269,6 +340,23 @@ class TetrisGame {
         this.draw();
     }
 
+    moveLeft() {
+        if (this.canMove(-1, 0)) this.currentBlock.x--;
+        this.draw();
+    }
+
+    moveRight() {
+        if (this.canMove(1, 0)) this.currentBlock.x++;
+        this.draw();
+    }
+
+    moveDownFast() {
+        while(this.canMove(0, 1)) {
+            this.currentBlock.y++;
+        }
+        this.moveDown();
+    }
+
     canMove(offsetX, offsetY) {
         return this.currentBlock.shape.every((row, dy) => {
             return row.every((cell, dx) => {
@@ -316,20 +404,12 @@ class TetrisGame {
 
     handleInput(e) {
         switch(e.key) {
-            case 'ArrowLeft': 
-                if (this.canMove(-1, 0)) this.currentBlock.x--;
-                break;
-            case 'ArrowRight':
-                if (this.canMove(1, 0)) this.currentBlock.x++;
-                break;
-            case 'ArrowDown':
-                this.moveDown();
-                break;
-            case 'ArrowUp':
-                this.rotate();
-                break;
+            case 'ArrowLeft': this.moveLeft(); break;
+            case 'ArrowRight': this.moveRight(); break;
+            case 'ArrowDown': this.moveDown(); break;
+            case 'ArrowUp': this.rotate(); break;
+            case ' ': this.moveDownFast(); break;
         }
-        this.draw();
     }
 
     rotate() {
@@ -341,6 +421,7 @@ class TetrisGame {
         if (!this.canMove(0, 0)) {
             this.currentBlock.shape = previousShape;
         }
+        this.draw();
     }
 
     start() {
@@ -388,8 +469,27 @@ class TetrisGame {
     }
 }
 
-// 修复2：将game实例暴露到全局作用域
+// 初始化游戏并绑定控制
 window.game = new TetrisGame();
+
+// 移动端控制绑定
+const initMobileControls = () => {
+    const addControl = (id, action) => {
+        const btn = document.getElementById(id);
+        const handler = () => game[action]();
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handler();
+        });
+        btn.addEventListener('click', handler);
+    };
+
+    addControl('leftBtn', 'moveLeft');
+    addControl('rightBtn', 'moveRight');
+    addControl('downBtn', 'moveDownFast');
+};
+
+document.addEventListener('DOMContentLoaded', initMobileControls);
 </script>
 </body>
 </html>
